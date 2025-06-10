@@ -2,12 +2,18 @@ require('dotenv').config();
 const express = require('express');
 const sequelize = require('./config/database');
 const storyRoutes = require('./routes/stories');
+const userRoutes = require('./routes/users');
+const projectRoutes = require('./routes/projects');
+const llmRoutes = require('./routes/llm');
 
 const app = express();
 app.use(express.json());
 
 // Routes
 app.use('/api/stories', storyRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/projects', projectRoutes);
+app.use('/api/llm', llmRoutes);
 
 // Health check endpoint
 app.get('/', (req, res) => res.send('AI Novel Assistant API Running!'));
