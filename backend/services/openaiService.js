@@ -8,7 +8,7 @@ async function getOpenAICompletion(prompt) {
     const response = await axios.post(
       OPENAI_API_URL,
       {
-        model: 'gpt-4',
+        model: 'gpt-3.5-turbo',
         messages: [{ role: 'user', content: prompt }],
         max_tokens: 512
       },

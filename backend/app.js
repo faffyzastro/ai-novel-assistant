@@ -1,10 +1,10 @@
 require('dotenv').config();
 const express = require('express');
 const sequelize = require('./config/database');
-const storyRoutes = require('./routes/stories');
-const userRoutes = require('./routes/users');
-const projectRoutes = require('./routes/projects');
-const llmRoutes = require('./routes/llm');
+const storyRoutes = require('./routes/storyRoutes');
+const userRoutes = require('./routes/userRoutes');
+const projectRoutes = require('./routes/projectRoutes');
+const llmRoutes = require('./routes/llm.js');
 
 const app = express();
 app.use(express.json());
