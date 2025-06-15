@@ -1,37 +1,23 @@
 {
-  "name": "ai-novel-assistant",
-<<<<<<< HEAD
-  "version": "1.0.0",
-  "description": "AI-powered story writing backend using Express and Sequelize.",
-  "main": "backend/app.js",
-  "scripts": {
-    "start": "node backend/app.js",
-    "dev": "nodemon backend/app.js"
-  },
-  "keywords": [],
-  "author": "Your Name",
-  "license": "MIT",
-  "dependencies": {
-    "axios": "^1.9.0",
-    "dotenv": "^16.5.0",
-    "express": "^5.1.0",
-    "sequelize": "^6.37.7",
-    "sqlite3": "^5.1.7"
-  },
-  "devDependencies": {
-    "nodemon": "^3.0.1"
-  }
-=======
+  "name": "ai-novel-assistant-frontend",
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "description": "AI-powered story writing frontend using React and Vite",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:ui": "vitest --ui",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:debug": "playwright test --debug"
   },
   "dependencies": {
+    "axios": "^1.9.0",
     "lodash": "^4.17.21",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
@@ -40,24 +26,30 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.25.0",
+    "@playwright/test": "^1.42.1",
+    "@testing-library/jest-dom": "^6.4.2",
+    "@testing-library/react": "^14.2.1",
+    "@testing-library/user-event": "^14.5.2",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
     "@vitejs/plugin-react": "^4.4.1",
+    "@vitest/coverage-v8": "^1.3.1",
+    "@vitest/ui": "^1.3.1",
     "autoprefixer": "^10.4.21",
     "eslint": "^9.25.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.19",
     "globals": "^16.0.0",
+    "jsdom": "^24.0.0",
     "postcss": "^8.5.4",
     "tailwindcss": "^3.4.17",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.30.1",
-    "vite": "^6.3.5"
+    "@types/jwt-decode": "^3.1.0",
+    "vite": "^6.3.5",
+    "vitest": "^1.3.1"
   },
-  "description": "This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.",
-  "main": "eslint.config.js",
-  "keywords": [],
-  "author": "",
-  "license": "ISC"
->>>>>>> 56e719e (initial front end commit with the frontend structure plus wireframes)
+  "keywords": ["react", "vite", "typescript", "tailwindcss", "ai", "novel", "writing"],
+  "author": "Your Name",
+  "license": "MIT"
 }

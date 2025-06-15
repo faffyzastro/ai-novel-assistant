@@ -17,11 +17,12 @@ const App: React.FC = () => {
         <Routes>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/editor" element={<StoryEditor />} />
+          <Route path="/story/:id/edit" element={<StoryEditor />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/feedback" element={<Feedback />} />
-          {/* Default route: show Dashboard */}
-          <Route path="*" element={<Dashboard />} />
+          {/* Default route: redirect to login if not authenticated, otherwise dashboard */}
+          <Route path="*" element={<Login />} /> {/* Default to login if no specific route matches, AuthContext will redirect if logged in */}
         </Routes>
       </Layout>
     </Router>

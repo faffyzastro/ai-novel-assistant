@@ -7,7 +7,7 @@ const User = sequelize.define('User', {
     primaryKey: true,
     autoIncrement: true
   },
-  name: {
+  username: {
     type: DataTypes.STRING,
     allowNull: false
   },
@@ -16,18 +16,17 @@ const User = sequelize.define('User', {
     allowNull: false,
     unique: true
   },
-  password: {
+  password_hash: {
     type: DataTypes.STRING,
     allowNull: false
   },
   createdAt: {
     type: DataTypes.DATE,
-    defaultValue: DataTypes.NOW
-  },
-  updatedAt: {
-    type: DataTypes.DATE,
+    field: 'created_at',
     defaultValue: DataTypes.NOW
   }
+}, {
+  timestamps: false // We are managing createdAt manually via the schema and don't need updatedAt
 });
 
 module.exports = User;

@@ -3,11 +3,20 @@ import Card from '../components/ui/Card';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 // Advanced Login page with Card, Input, Button, loading, and error states
 const Login: React.FC = () => {
-  const { login, loading, error } = useAuth();
-  const [form, setForm] = useState({ username: '', password: '' });
+  const { login, loading, error, user } = useAuth();
+  const navigate = useNavigate();
+  const [form, setForm] = useState({ email: '', password: '' });
+
+  // Redirect if already logged in
+  React.useEffect(() => {
+    if (user) {
+      navigate('/dashboard'); // Or wherever your main app dashboard is
+    }
+  }, [user, navigate]);
 
   // Handle input changes
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -17,7 +26,7 @@ const Login: React.FC = () => {
   // Handle form submit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await login(form.username, form.password);
+    await login(form.email, form.password);
   };
 
   return (
@@ -26,12 +35,13 @@ const Login: React.FC = () => {
         <h2 className="text-3xl font-heading font-bold mb-6 text-center text-[#232946] dark:text-white tracking-tight">Sign In</h2>
         <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
           <Input
-            label="Username"
-            name="username"
-            value={form.username}
+            label="Email"
+            name="email"
+            type="email"
+            value={form.email}
             onChange={handleChange}
-            placeholder="Enter your username"
-            autoComplete="username"
+            placeholder="Enter your email"
+            autoComplete="email"
             required
           />
           <Input

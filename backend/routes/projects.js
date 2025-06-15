@@ -1,65 +1,79 @@
 const express = require('express');
 const router = express.Router();
 const Project = require('../models/Project');
+const authenticateUser = require('../middleware/auth'); // Import authentication middleware
 
-// Get all projects
+// Apply authentication middleware to all project routes
+router.use(authenticateUser);
+
+// Get all projects for the authenticated user
 router.get('/', async (req, res) => {
   try {
-    const projects = await Project.findAll();
+    const projects = await Project.findAll({ where: { user_id: req.userId } });
     res.json(projects);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
 
-// Create a new project
+// Create a new project for the authenticated user
 router.post('/', async (req, res) => {
   try {
-    const project = await Project.create(req.body);
+    const { name, description, genre, keywords, tone, setting, length_preference } = req.body;
+    const project = await Project.create({
+      name,
+      description,
+      genre,
+      keywords,
+      tone,
+      setting,
+      length_preference,
+      user_id: req.userId // Associate project with the authenticated user
+    });
     res.status(201).json(project);
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
 });
 
-// Get a specific project
+// Get a specific project for the authenticated user
 router.get('/:id', async (req, res) => {
   try {
-    const project = await Project.findByPk(req.params.id);
+    const project = await Project.findOne({ where: { id: req.params.id, user_id: req.userId } });
     if (project) {
       res.json(project);
     } else {
-      res.status(404).json({ message: 'Project not found' });
+      res.status(404).json({ message: 'Project not found or you do not have permission to access it' });
     }
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
 
-// Update a project
+// Update a project for the authenticated user
 router.put('/:id', async (req, res) => {
   try {
-    const project = await Project.findByPk(req.params.id);
+    const project = await Project.findOne({ where: { id: req.params.id, user_id: req.userId } });
     if (project) {
       await project.update(req.body);
       res.json(project);
     } else {
-      res.status(404).json({ message: 'Project not found' });
+      res.status(404).json({ message: 'Project not found or you do not have permission to update it' });
     }
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
 });
 
-// Delete a project
+// Delete a project for the authenticated user
 router.delete('/:id', async (req, res) => {
   try {
-    const project = await Project.findByPk(req.params.id);
+    const project = await Project.findOne({ where: { id: req.params.id, user_id: req.userId } });
     if (project) {
       await project.destroy();
-      res.json({ message: 'Project deleted' });
+      res.json({ message: 'Project deleted successfully' });
     } else {
-      res.status(404).json({ message: 'Project not found' });
+      res.status(404).json({ message: 'Project not found or you do not have permission to delete it' });
     }
   } catch (error) {
     res.status(500).json({ message: error.message });

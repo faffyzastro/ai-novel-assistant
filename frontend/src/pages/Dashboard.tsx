@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
@@ -10,19 +10,17 @@ import Loader from '../components/ui/Loader';
 import FileUpload from '../components/ui/FileUpload';
 import StoryGenerator from '../components/StoryGenerator';
 import Tabs from '../components/ui/Tabs';
+import { getStories, deleteStory, Story, uploadAndExtractFile, exportStory } from '../services/storyService'; // Import Story interface
+import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
-// Mock stories for demonstration
-const mockStories = [
-  { id: 1, title: 'The Lost City', author: 'Jane Doe', status: 'Draft', updated: '2024-06-09' },
-  { id: 2, title: 'AI Dreams', author: 'John Smith', status: 'In Progress', updated: '2024-06-08' },
-  { id: 3, title: 'Midnight Library', author: 'Jane Doe', status: 'Completed', updated: '2024-06-07' },
-];
+// Removed mockStories as we will fetch from API
 
 const tabLabels = [
   { label: 'All Stories', status: 'all' },
-  { label: 'Drafts', status: 'Draft' },
-  { label: 'In Progress', status: 'In Progress' },
-  { label: 'Completed', status: 'Completed' },
+  { label: 'Drafts', status: 'draft' }, // Adjusted to match backend enum
+  { label: 'In Progress', status: 'in_progress' }, // Adjusted to match backend enum
+  { label: 'Completed', status: 'completed' }, // Adjusted to match backend enum
 ];
 
 const recentActivity = [
@@ -39,16 +37,51 @@ const promptTemplates = [
 ];
 
 const Dashboard: React.FC = () => {
-  const [selected, setSelected] = useState<typeof mockStories[0] | null>(null);
-  const [showDelete, setShowDelete] = useState(false);
+  const { user, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
+
+  const [stories, setStories] = useState<Story[]>([]);
+  const [loadingStories, setLoadingStories] = useState(true);
+  const [storiesError, setStoriesError] = useState<string | null>(null);
+
+  const [selectedStory, setSelectedStory] = useState<Story | null>(null); // Renamed to avoid conflict
+  const [showDeleteModal, setShowDeleteModal] = useState(false); // Renamed to avoid conflict
   const { showToast } = useToast();
   const [file, setFile] = useState<File | null>(null);
-  const [downloading, setDownloading] = useState<{ id: number; type: string } | null>(null);
+  const [downloading, setDownloading] = useState<{ id: string; type: string } | null>(null); // Changed id to string
   const [showStoryGen, setShowStoryGen] = useState(false);
   const [search, setSearch] = useState('');
-  const [preview, setPreview] = useState<typeof mockStories[0] | null>(null);
+  const [previewStory, setPreviewStory] = useState<Story | null>(null); // Renamed to avoid conflict
   const [showWelcome, setShowWelcome] = useState(true);
 
+  // Redirect if not logged in
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate('/login');
+    }
+  }, [user, authLoading, navigate]);
+
+  // Fetch stories from API
+  const fetchStories = useCallback(async () => {
+    if (!user) return; // Only fetch if user is logged in
+    setLoadingStories(true);
+    setStoriesError(null);
+    try {
+      const fetchedStories = await getStories({ userId: user.id }); // Assuming stories can be filtered by user ID
+      setStories(fetchedStories);
+    } catch (err: any) {
+      setStoriesError(err.message || 'Failed to fetch stories');
+      console.error("Error fetching stories:", err);
+    } finally {
+      setLoadingStories(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    fetchStories();
+  }, [fetchStories]);
+
+  // Handle story generator event
   useEffect(() => {
     const handler = () => setShowStoryGen(true);
     window.addEventListener('open-story-gen', handler);
@@ -56,46 +89,105 @@ const Dashboard: React.FC = () => {
   }, []);
 
   // Memoize filtered stories for performance
-  const getFilteredStories = useMemo(() => (status: string) =>
-    mockStories.filter(story => {
-      const q = search.toLowerCase();
+  const getFilteredStories = useMemo(() => (status: string) => {
+    const q = search.toLowerCase();
+    return stories.filter(story => {
       const matchesTab = status === 'all' ? true : story.status === status;
       return matchesTab && (
         story.title.toLowerCase().includes(q) ||
-        story.author.toLowerCase().includes(q) ||
-        story.status.toLowerCase().includes(q)
+        (story.synopsis && story.synopsis.toLowerCase().includes(q)) ||
+        (story.genre && story.genre.toLowerCase().includes(q)) ||
+        (story.status && story.status.toLowerCase().includes(q))
       );
-    }), [search]);
+    });
+  }, [search, stories]);
 
-  // Handle file upload
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
-      showToast('File uploaded: ' + e.target.files[0].name, 'success');
+  // Handle file upload and text extraction
+  const handleFileUpload = async (uploadedFile: File) => {
+    setFile(uploadedFile);
+    showToast(`Uploading file: ${uploadedFile.name}`, 'info');
+    try {
+      const result = await uploadAndExtractFile(uploadedFile);
+      showToast(`Text extracted from ${uploadedFile.name} successfully!`, 'success');
+      // Optionally, use the extracted text to create a new story or update an existing one
+      console.log('Extracted text:', result.extractedText);
+      // You might want to open a modal here to let the user create a story from this text
+    } catch (err: any) {
+      showToast(`Failed to extract text from ${uploadedFile.name}: ${err.message}`, 'error');
+      console.error('File extraction error:', err);
     }
   };
 
-  // Handle file download (simulate)
-  const handleDownload = (story: typeof mockStories[0], type: 'pdf' | 'txt') => {
+  // Handle file download
+  const handleDownload = async (story: Story, type: 'pdf' | 'txt') => {
     setDownloading({ id: story.id, type });
-    showToast(`Downloading ${story.title} as ${type.toUpperCase()} (simulated)`, 'info');
-    setTimeout(() => setDownloading(null), 1500);
+    showToast(`Downloading ${story.title} as ${type.toUpperCase()}...`, 'info');
+    try {
+      await exportStory(story.id, type);
+      showToast(`${story.title} exported as ${type.toUpperCase()} successfully!`, 'success');
+    } catch (err: any) {
+      showToast(`Failed to export story: ${err.message}`, 'error');
+      console.error("Export error:", err);
+    } finally {
+      setDownloading(null);
+    }
   };
 
   // Handle delete
-  const handleDelete = () => {
-    setShowDelete(false);
-    showToast('Story deleted (simulated)', 'success');
+  const handleDelete = async () => {
+    if (selectedStory) {
+      setShowDeleteModal(false);
+      try {
+        await deleteStory(selectedStory.id);
+        showToast('Story deleted successfully', 'success');
+        fetchStories(); // Re-fetch stories after deletion
+        setSelectedStory(null);
+      } catch (err: any) {
+        showToast(`Failed to delete story: ${err.message}`, 'error');
+        console.error("Error deleting story:", err);
+      }
+    }
   };
 
   // DataTable columns
   const columns = [
     { label: 'Title', key: 'title' },
-    { label: 'Author', key: 'author' },
+    { label: 'Genre', key: 'genre' },
     { label: 'Status', key: 'status' },
-    { label: 'Last Updated', key: 'updated' },
+    { label: 'Last Updated', key: 'updatedAt' }, // Changed to updatedAt
     { label: 'Actions', key: 'actions' },
   ];
+
+  // Prepare data for DataTable
+  const storyDataForTable = (storiesToMap: Story[]) => storiesToMap.map((story) => ({
+    ...story,
+    author: user?.username || 'N/A', // Use logged-in username as author
+    updated: new Date(story.updatedAt).toLocaleDateString(), // Format date
+    status: <span className="font-semibold px-3 py-1 rounded-full bg-gradient-to-r from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800 text-blue-700 dark:text-blue-200 shadow-sm text-base">{story.status}</span>,
+    actions: (
+      <Dropdown label={<span className="text-blue-600 dark:text-orange-300 font-semibold">Actions</span>} compact>
+        <DropdownItem className="text-blue-700 dark:text-orange-200" compact onClick={() => setPreviewStory(story)}>Preview</DropdownItem>
+        <DropdownItem className="text-blue-700 dark:text-orange-200" compact onClick={() => navigate(`/story/${story.id}/edit`)}>Edit</DropdownItem>
+        <DropdownItem className="text-blue-700 dark:text-orange-200" compact onClick={() => navigate(`/story/${story.id}/analyze`)}>Analyze</DropdownItem>
+        <DropdownItem className="text-blue-700 dark:text-orange-200" compact onClick={() => handleDownload(story, 'pdf')}>
+          {downloading && downloading.id === story.id && downloading.type === 'pdf' ? <Loader size={14} className="inline-block mr-2" /> : null}
+          Download PDF
+        </DropdownItem>
+        <DropdownItem className="text-blue-700 dark:text-orange-200" compact onClick={() => handleDownload(story, 'txt')}>
+          {downloading && downloading.id === story.id && downloading.type === 'txt' ? <Loader size={14} className="inline-block mr-2" /> : null}
+          Download TXT
+        </DropdownItem>
+        <DropdownItem className="text-red-600 dark:text-pink-400 font-semibold" compact onClick={() => {
+          setSelectedStory(story);
+          setShowDeleteModal(true);
+        }}>Delete</DropdownItem>
+      </Dropdown>
+    ),
+  }));
+
+  if (authLoading || !user) {
+    return <Loader size={48} className="min-h-screen flex items-center justify-center"/>; // Show a loader while authentication is in progress
+  }
 
   return (
     <div className="w-full min-h-screen flex flex-col gap-0 bg-gradient-to-br from-blue-50 via-white to-orange-50 dark:from-[#181c2a] dark:via-[#232946] dark:to-blue-950">
@@ -124,30 +216,12 @@ const Dashboard: React.FC = () => {
                         value={search}
                         onChange={e => setSearch(e.target.value)}
                       />
+                      {loadingStories && <Loader size={20} className="mr-2"/>}
+                      {storiesError && <div className="text-error text-sm">{storiesError}</div>}
                     </div>
                     <Card className="p-0 overflow-hidden bg-white/95 dark:bg-blue-950/95 border-2 border-blue-200 dark:border-orange-700 shadow-2xl animate-fadeIn">
                       <div className="overflow-x-auto">
-                        <DataTable columns={columns} data={getFilteredStories(tab.status).map((story) => ({
-                          ...story,
-                          author: <span className="flex items-center gap-2 text-blue-900 dark:text-blue-100 font-medium text-base"><Avatar size={24} />{story.author}</span>,
-                          status: <span className="font-semibold px-3 py-1 rounded-full bg-gradient-to-r from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800 text-blue-700 dark:text-blue-200 shadow-sm text-base">{story.status}</span>,
-                          updated: <span className="text-blue-500 dark:text-blue-300 font-mono text-base">{story.updated}</span>,
-                          actions: (
-                            <Dropdown label={<span className="text-blue-600 dark:text-orange-300 font-semibold">Actions</span>} compact>
-                              <DropdownItem className="text-blue-700 dark:text-orange-200" compact onClick={() => setPreview(story)}>Preview</DropdownItem>
-                              <DropdownItem className="text-blue-700 dark:text-orange-200" compact onClick={() => setSelected(story)}>View</DropdownItem>
-                              <DropdownItem className="text-blue-700 dark:text-orange-200" compact onClick={() => handleDownload(story, 'pdf')}>
-                                {downloading && downloading.id === story.id && downloading.type === 'pdf' ? <Loader size={14} className="inline-block mr-2" /> : null}
-                                Download PDF
-                              </DropdownItem>
-                              <DropdownItem className="text-blue-700 dark:text-orange-200" compact onClick={() => handleDownload(story, 'txt')}>
-                                {downloading && downloading.id === story.id && downloading.type === 'txt' ? <Loader size={14} className="inline-block mr-2" /> : null}
-                                Download TXT
-                              </DropdownItem>
-                              <DropdownItem className="text-red-600 dark:text-pink-400 font-semibold" compact onClick={() => setShowDelete(true)}>Delete</DropdownItem>
-                            </Dropdown>
-                          ),
-                        }))} />
+                        <DataTable columns={columns} data={storyDataForTable(getFilteredStories(tab.status))} />
                       </div>
                     </Card>
                   </>
@@ -160,10 +234,10 @@ const Dashboard: React.FC = () => {
         <div className="w-full md:w-96 flex flex-col gap-6 sticky top-8 self-start min-w-0">
           <Card className="flex flex-col gap-4 p-6 bg-gradient-to-br from-blue-50 to-orange-50 dark:from-blue-900 dark:to-orange-900 border border-blue-200 dark:border-blue-900 shadow-xl animate-fadeIn">
             <FileUpload
-              accept=".txt,.md"
-              multiple
-              label="Upload Story Files (.txt, .md)"
-              onFileRead={(content, file) => showToast(`File uploaded: ${file.name}`, 'success')}
+              accept=".txt,.md,.pdf"
+              multiple={false}
+              label="Upload Story Files (.txt, .md, .pdf)"
+              onFileRead={handleFileUpload} // Changed prop name to onFileChange to match standard file input
             />
             <div className="mt-2">
               <Dropdown
@@ -200,24 +274,24 @@ const Dashboard: React.FC = () => {
       </div>
       {/* Modals */}
       <Modal
-        isOpen={!!selected}
-        onClose={() => setSelected(null)}
-        title={selected?.title}
+        isOpen={!!previewStory}
+        onClose={() => setPreviewStory(null)}
+        title={previewStory?.title}
       >
-        <p className="mb-4 text-blue-900 dark:text-blue-100">Story details for <b>{selected?.title}</b> by {selected?.author}.</p>
-        <Button variant="primary" onClick={() => setSelected(null)}>
+        <p className="mb-4 text-blue-900 dark:text-blue-100">{previewStory?.synopsis}</p>
+        <Button variant="primary" onClick={() => setPreviewStory(null)}>
           Close
         </Button>
       </Modal>
       <Modal
-        isOpen={showDelete}
-        onClose={() => setShowDelete(false)}
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
         title="Delete Story?"
       >
-        <p className="mb-4 text-blue-900 dark:text-blue-100">Are you sure you want to delete this story? This action cannot be undone.</p>
+        <p className="mb-4 text-blue-900 dark:text-blue-100">Are you sure you want to delete &quot;<b>{selectedStory?.title}</b>&quot;? This action cannot be undone.</p>
         <div className="flex gap-2">
           <Button variant="danger" onClick={handleDelete}>Delete</Button>
-          <Button variant="secondary" onClick={() => setShowDelete(false)}>Cancel</Button>
+          <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>Cancel</Button>
         </div>
       </Modal>
       <Modal
@@ -246,18 +320,6 @@ const Dashboard: React.FC = () => {
             </ul>
           </div>
           <StoryGenerator />
-        </div>
-      </Modal>
-      <Modal
-        isOpen={!!preview}
-        onClose={() => setPreview(null)}
-        title={preview?.title ? `Preview: ${preview.title}` : 'Preview'}
-      >
-        <div className="p-4 sm:p-6 bg-gradient-to-br from-blue-50 to-orange-50 dark:from-blue-900 dark:to-blue-950 rounded-xl animate-fadeIn">
-          <div className="mb-2 text-sm text-blue-500 dark:text-blue-300">By {preview?.author} &middot; Status: <span className="font-semibold">{preview?.status}</span> &middot; Last updated: <span className="font-mono">{preview?.updated}</span></div>
-          <div className="prose prose-blue dark:prose-invert max-w-none text-base leading-relaxed text-gray-900 dark:text-gray-100 bg-white/80 dark:bg-blue-950/80 rounded-lg p-4 shadow-inner animate-fadeIn">
-            (Story preview content goes here...)
-          </div>
         </div>
       </Modal>
     </div>

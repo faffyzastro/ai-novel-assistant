@@ -39,7 +39,29 @@ const Story = sequelize.define('Story', {
   updatedAt: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW
+  },
+  coherence_score: {
+    type: DataTypes.FLOAT,
+    allowNull: true
+  },
+  style_score: {
+    type: DataTypes.FLOAT,
+    allowNull: true
+  },
+  pacing_score: {
+    type: DataTypes.FLOAT,
+    allowNull: true
+  },
+  feedback: {
+    type: DataTypes.JSONB, // Use JSONB for structured feedback
+    allowNull: true
   }
+}, {
+  indexes: [
+    { fields: ['projectId'] },
+    { fields: ['status'] },
+    { fields: ['genre'] }
+  ]
 });
 
 Project.hasMany(Story, { foreignKey: 'projectId' });

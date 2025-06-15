@@ -3,32 +3,46 @@ import Card from '../components/ui/Card';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 // Register page with Card, Input, Button, loading, and error states
 const Register: React.FC = () => {
-  const { loading } = useAuth(); // In a real app, use a register function from context or API
-  const [form, setForm] = useState({ username: '', password: '', confirm: '' });
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+  const { register, loading, error: authError, user } = useAuth();
+  const navigate = useNavigate();
+  const [form, setForm] = useState({ username: '', email: '', password: '', confirm: '' });
+  const [localError, setLocalError] = useState<string | null>(null);
+
+  // Redirect if already logged in or after successful registration
+  React.useEffect(() => {
+    if (user) {
+      navigate('/dashboard'); // Or wherever your main app dashboard is
+    }
+  }, [user, navigate]);
 
   // Handle input changes
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+    setLocalError(null); // Clear local error on change
   };
 
-  // Handle form submit (simulate registration)
+  // Handle form submit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-    setSuccess(false);
+    setLocalError(null);
     if (form.password !== form.confirm) {
-      setError('Passwords do not match');
+      setLocalError('Passwords do not match');
       return;
     }
-    // Simulate API call
-    await new Promise((res) => setTimeout(res, 1000));
-    setSuccess(true);
+    try {
+      await register(form.username, form.email, form.password);
+      // No need for local success state as `user` in AuthContext will update on success
+      navigate('/dashboard'); // Redirect after successful registration
+    } catch (err) {
+      // Error handled by AuthContext, so `authError` will be set
+    }
   };
+
+  const displayError = localError || authError;
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-[#1a2236] via-[#232946] to-[#121826] dark:from-[#181c2a] dark:via-[#232946] dark:to-[#121826] p-4">
@@ -42,6 +56,16 @@ const Register: React.FC = () => {
             onChange={handleChange}
             placeholder="Choose a username"
             autoComplete="username"
+            required
+          />
+          <Input
+            label="Email"
+            name="email"
+            type="email"
+            value={form.email}
+            onChange={handleChange}
+            placeholder="Enter your email"
+            autoComplete="email"
             required
           />
           <Input
@@ -64,13 +88,7 @@ const Register: React.FC = () => {
             autoComplete="new-password"
             required
           />
-          {error && <div className="text-danger text-sm text-center font-semibold dark:text-pink-400">{error}</div>}
-          {success && (
-            <div className="text-success text-sm text-center font-semibold dark:text-green-400">
-              Registration successful! You can now{' '}
-              <a href="/login" className="text-blue-600 dark:text-blue-300 hover:underline font-semibold">login</a>.
-            </div>
-          )}
+          {displayError && <div className="text-danger text-sm text-center font-semibold dark:text-pink-400">{displayError}</div>}
           <Button type="submit" variant="primary" disabled={loading} className="mt-2">
             {loading ? 'Registering...' : 'Register'}
           </Button>
