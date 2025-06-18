@@ -1,0 +1,34 @@
+<<<<<<< HEAD
+node_modules/
+.env
+*.sqlite
+.DS_Store
+Thumbs.db
+=======
+# Node modules should never be committed
+node_modules/
+
+# Build output
+/dist/
+
+# Environment variables
+.env
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Log files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor directories and files
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+>>>>>>> 56e719e (initial front end commit with the frontend structure plus wireframes)
