@@ -1,0 +1,122 @@
+// frontend/src/pages/Register.tsx
+
+import React, { useState } from 'react';
+import Card from '../components/ui/Card';
+import Input from '../components/ui/Input';
+import Button from '../components/ui/Button';
+import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom'; // Import useNavigate
+
+const Register: React.FC = () => {
+  // Destructure the 'register' function, 'loading' state, and 'error' state from useAuth
+  const { register, loading, error: authError } = useAuth();
+  const navigate = useNavigate(); // Initialize navigate hook
+
+  // Initialize form state with 'name', 'email', 'password', and 'confirm'
+  const [form, setForm] = useState({ name: '', email: '', password: '', confirm: '' });
+  const [formError, setFormError] = useState<string | null>(null); // For local form validation errors
+  const [success, setSuccess] = useState(false);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormError(null); // Clear previous local form errors
+    setSuccess(false); // Clear previous success state
+
+    // Basic client-side validation: passwords must match
+    if (form.password !== form.confirm) {
+      setFormError('Passwords do not match');
+      return;
+    }
+
+    // Call the actual register function from AuthContext
+    const isSuccess = await register(form.name, form.email, form.password);
+
+    if (isSuccess) {
+      setSuccess(true);
+      // Optional: Redirect to login page after a short delay for user to read success message
+      setTimeout(() => {
+        navigate('/login');
+      }, 2000); // Redirect after 2 seconds
+    } else {
+      // The error state will be handled by `authError` from `useAuth`
+      // No need to set a separate `setError` here as `authError` will display
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-[#1a2236] via-[#232946] to-[#121826] dark:from-[#181c2a] dark:via-[#232946] dark:to-[#121826] p-4">
+      <Card className="w-full max-w-sm p-8 bg-white/80 dark:bg-blue-950/80 backdrop-blur-md border border-blue-200 dark:border-blue-900 shadow-2xl">
+        <h2 className="text-3xl font-heading font-bold mb-6 text-center text-[#232946] dark:text-white tracking-tight">Register</h2>
+        <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
+          {/* Input for User's Name */}
+          <Input
+            label="Name"
+            name="name"
+            value={form.name}
+            onChange={handleChange}
+            placeholder="Enter your full name"
+            autoComplete="name"
+            required
+          />
+          {/* Input for User's Email */}
+          <Input
+            label="Email"
+            name="email"
+            type="email" // Use type="email" for better browser validation
+            value={form.email}
+            onChange={handleChange}
+            placeholder="Enter your email address"
+            autoComplete="email"
+            required
+          />
+          {/* Input for Password */}
+          <Input
+            label="Password"
+            name="password"
+            type="password"
+            value={form.password}
+            onChange={handleChange}
+            placeholder="Create a password"
+            autoComplete="new-password"
+            required
+          />
+          {/* Input for Confirm Password */}
+          <Input
+            label="Confirm Password"
+            name="confirm"
+            type="password"
+            value={form.confirm}
+            onChange={handleChange}
+            placeholder="Confirm your password"
+            autoComplete="new-password"
+            required
+          />
+          {/* Display local form errors or authentication errors from context */}
+          {(formError || authError) && (
+            <div className="text-danger text-sm text-center font-semibold dark:text-pink-400">
+              {formError || authError}
+            </div>
+          )}
+          {/* Display success message */}
+          {success && (
+            <div className="text-success text-sm text-center font-semibold dark:text-green-400">
+              Registration successful! Redirecting to login...
+            </div>
+          )}
+          <Button type="submit" variant="primary" disabled={loading} className="mt-2">
+            {loading ? 'Registering...' : 'Register'}
+          </Button>
+        </form>
+        <div className="mt-6 text-center text-sm text-blue-900 dark:text-blue-100">
+          Already have an account? <a href="/login" className="text-blue-600 dark:text-blue-300 hover:underline font-semibold">Sign In</a>
+        </div>
+      </Card>
+    </div>
+  );
+};
+
+export default Register;
