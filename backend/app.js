@@ -8,6 +8,7 @@ const storyRoutes = require('./routes/storyRoutes');
 const userRoutes = require('./routes/userRoutes');
 const projectRoutes = require('./routes/projectRoutes');
 const llmRoutes = require('./routes/llm.js');
+const agentsRoutes = require('./routes/agents');
 
 // Import the new authentication routes
 const authRoutes = require('./routes/authRoutes'); // Assuming you've created this file as discussed
@@ -20,9 +21,9 @@ const app = express();
 app.use(cors());
 
 // Body parser for JSON requests. This is essential for handling POST/PUT request bodies.
-app.use(express.json());
+app.use(express.json({ limit: '5mb' }));
 // Body parser for URL-encoded form data (less common for APIs, but good to have).
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 
 // --- Routes ---
 // Health check endpoint
@@ -33,6 +34,7 @@ app.use('/api/stories', storyRoutes);
 app.use('/api/users', userRoutes); // User management (e.g., creating users via registration)
 app.use('/api/projects', projectRoutes);
 app.use('/api/llm', llmRoutes);
+app.use('/api/agents', agentsRoutes);
 
 // NEW: Mount your authentication routes.
 // We're mounting it under '/api' so your login endpoint becomes '/api/login'.

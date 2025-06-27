@@ -39,6 +39,8 @@ exports.loginUser = async (req, res) => {
                 id: user.id,
                 email: user.email,
                 name: user.name,
+                avatar: user.avatar,
+                bio: user.bio,
                 // Include other non-sensitive user data you want in the token
             },
         };
@@ -51,7 +53,7 @@ exports.loginUser = async (req, res) => {
                 if (err) throw err;
                 res.status(200).json({
                     message: 'Login successful!',
-                    user: { id: user.id, name: user.name, email: user.email }, // Send back user data
+                    user: { id: user.id, name: user.name, email: user.email, avatar: user.avatar, bio: user.bio }, // Send back user data
                     token, // Send the JWT token
                 });
             }
