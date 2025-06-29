@@ -3,7 +3,8 @@
   "compilerOptions": {
     "composite": true,
     "module": "commonjs",
-    "noEmit": true
+    "noEmit": true,
+    "lib": ["DOM", "ES2015"]
   },
   "include": ["vite.config.ts"]
 } 

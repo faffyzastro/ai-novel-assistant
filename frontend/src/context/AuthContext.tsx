@@ -3,12 +3,15 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios'; // Make sure axios is installed: npm install axios
 import { useNavigate } from 'react-router-dom'; // If you want to redirect after login/logout
+import { BACKEND_URL } from '../config';
 
 // Define the shape of your user data (adjust as per your backend response)
 interface User {
   id: number;
   name: string;
   email: string;
+  avatar?: string; // Add avatar property
+  bio?: string;
   // Add other user properties like 'role' if applicable
 }
 
@@ -21,6 +24,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<boolean>;
   register: (name: string, email: string, password: string) => Promise<boolean>; // Added 'name' and 'email'
   logout: () => void;
+  updateUser: (updates: Partial<User>) => void; // Add updateUser method
 }
 
 // Create the context
@@ -34,11 +38,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate(); // Initialize useNavigate for potential redirects
 
-  // Set your backend API base URL
-  // Ensure this matches where your backend Express app is listening and where your routes are mounted.
-  // If your user routes are at http://localhost:8000/api/users, then BASE_API_URL should be http://localhost:8000/api
-  const BASE_API_URL = 'http://localhost:8000'; // Assuming your backend runs on port 8000
-
   // --- Registration Function ---
   const register = async (name: string, email: string, password: string): Promise<boolean> => {
     setLoading(true);
@@ -47,7 +46,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       // Make a POST request to your backend's user creation endpoint
       // This maps to your backend's router.post('/', createUser);
-      const response = await axios.post(`${BASE_API_URL}/api/users`, {
+      const response = await axios.post(`${BACKEND_URL}/api/users`, {
         name,
         email,
         password,
@@ -74,7 +73,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       // Make a POST request to your backend's login endpoint
       // You NEED to implement this endpoint in your backend (e.g., POST /api/login)
-      const response = await axios.post(`${BASE_API_URL}/api/auth/login`, {
+      const response = await axios.post(`${BACKEND_URL}/api/login`, {
         email,
         password,
       });
@@ -124,9 +123,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
+  // --- Update User Function ---
+  const updateUser = (updates: Partial<User>) => {
+    setUser(prev => {
+      if (!prev) return prev;
+      const updated = { ...prev, ...updates };
+      localStorage.setItem('user', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
   // Provide the context values to children components
   return (
-    <AuthContext.Provider value={{ user, token, loading, error, login, register, logout }}>
+    <AuthContext.Provider value={{ user, token, loading, error, login, register, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );
@@ -140,3 +149,5 @@ export const useAuth = () => {
   }
   return context;
 };
+
+export {};
