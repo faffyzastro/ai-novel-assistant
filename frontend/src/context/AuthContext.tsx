@@ -74,7 +74,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       // Make a POST request to your backend's login endpoint
       // You NEED to implement this endpoint in your backend (e.g., POST /api/login)
-      const response = await axios.post(`${BASE_API_URL}/api/login`, {
+      const response = await axios.post(`${BASE_API_URL}/api/auth/login`, {
         email,
         password,
       });

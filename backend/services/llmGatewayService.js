@@ -1,6 +1,7 @@
 const { getOpenAICompletion } = require('./openaiService');
 const { getClaudeCompletion } = require('./claudeService');
 const { getGeminiCompletion } = require('./geminiService');
+const { getCache, setCache } = require('./cacheService');
 // Placeholder for future: const { getGeminiCompletion } = require('./geminiService');
 
 // LLM provider list for round-robin or fallback
@@ -11,15 +12,29 @@ const llmProviders = [
   // { name: 'gemini', handler: getGeminiCompletion },
 ];
 
-// For now, always use OpenAI. Later, add load balancing/fallback logic.
+// Try each provider in order; fallback if one fails
+// Use cache for repeated prompts
 async function generateWithLLM(prompt) {
-  // In the future, you can add logic to pick a provider or fallback
-  try {
-    return await llmProviders[0].handler(prompt);
-  } catch (error) {
-    // In the future, try next provider if error
-    throw error;
+  // Check cache first
+  const cached = getCache(prompt);
+  if (cached) {
+    return cached;
   }
+  let lastError = null;
+  for (const provider of llmProviders) {
+    try {
+      // Attempt to generate with this provider
+      const result = await provider.handler(prompt);
+      setCache(prompt, result); // Cache the result
+      return result;
+    } catch (error) {
+      lastError = error;
+      // Log and try next provider
+      console.warn(`LLM provider ${provider.name} failed:`, error.message);
+    }
+  }
+  // If all providers fail, throw the last error
+  throw lastError || new Error('All LLM providers failed');
 }
 
 module.exports = { generateWithLLM }; 

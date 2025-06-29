@@ -1,5 +1,5 @@
 // backend/controllers/authController.js
-const User = require('../models/user');
+const { User } = require('../models');
 // For password hashing, install bcrypt: npm install bcryptjs
 const bcrypt = require('bcryptjs'); // Using bcryptjs for password hashing
 const jwt = require('jsonwebtoken'); // For generating JSON Web Tokens
@@ -43,21 +43,17 @@ exports.loginUser = async (req, res) => {
             },
         };
 
-        jwt.sign(
-            payload,
-            JWT_SECRET,
-            { expiresIn: '1h' }, // Token expires in 1 hour
-            (err, token) => {
-                if (err) throw err;
-                res.status(200).json({
-                    message: 'Login successful!',
-                    user: { id: user.id, name: user.name, email: user.email }, // Send back user data
-                    token, // Send the JWT token
-                });
-            }
-        );
+        // Generate the token synchronously and let the try/catch handle any errors.
+        const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
 
+        // Send the successful response
+        res.status(200).json({
+            message: 'Login successful!',
+            user: { id: user.id, name: user.name, email: user.email }, // Send back user data
+            token, // Send the JWT token
+        });
     } catch (error) {
+        // Now, any error from jwt.sign will be caught here correctly.
         console.error('Login error:', error.message);
         res.status(500).json({ message: 'Server error during login.' });
     }

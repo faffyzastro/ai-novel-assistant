@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { generateStoryDirectly } from '../services/storyService';
+import { generateStory } from '../services/storyService';
 import Modal from './ui/Modal';
 
 const genres = ['Any', 'Fantasy', 'Sci-Fi', 'Mystery', 'Romance', 'Horror', 'Adventure'];
@@ -37,8 +37,8 @@ const StoryGenerator: React.FC = () => {
     setError('');
     setStory('');
     try {
-      const storyText = await generateStoryDirectly({ prompt, genre, tone });
-      setStory(storyText);
+      const response = await generateStory({ prompt, genre, tone });
+      setStory(response.story || '');
       setShowResultModal(true);
     } catch (err: any) {
       setError(typeof err === 'string' ? err : 'Story generation failed');

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import { NavLink, useLocation } from 'react-router-dom';
 import { FiMenu, FiHome, FiEdit, FiUser, FiLogOut, FiBell, FiSettings, FiPlus } from 'react-icons/fi';
+import { useAuth } from '../context/AuthContext';
 
 const navLinks = [
   { name: 'Dashboard', icon: FiHome, to: '/dashboard' },
@@ -26,6 +27,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [showWelcome, setShowWelcome] = useState(
     () => isDashboard && sessionStorage.getItem('ai-novel-welcome') !== 'dismissed'
   );
+  const { user, logout } = useAuth();
+
+  // Filter navLinks based on login state
+  const filteredNavLinks = navLinks.filter(link => {
+    if ((link.name === 'Login' || link.name === 'Register') && user) return false;
+    return true;
+  });
 
   return (
     <div className="w-screen min-h-screen flex flex-col bg-gradient-to-br from-[#1a2236] via-[#232946] to-[#121826] dark:from-[#181c2a] dark:via-[#232946] dark:to-[#121826] transition-all duration-300">
@@ -93,7 +101,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <FiMenu size={24} />
           </button>
           <nav className="flex flex-col gap-2 mt-2">
-            {navLinks.map((link) => {
+            {filteredNavLinks.map((link) => {
               const Icon = link.icon;
               return (
                 <NavLink
@@ -110,6 +118,26 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               );
             })}
           </nav>
+          {/* User profile and logout section */}
+          {user && (
+            <div className={`mt-auto mb-6 px-4 flex flex-col items-${sidebarCollapsed ? 'center' : 'start'} w-full`}>
+              <div className="flex items-center gap-3 w-full mb-2">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-700 flex items-center justify-center text-white font-bold text-lg">
+                  {user.name ? user.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : <FiUser size={20} />}
+                </div>
+                {!sidebarCollapsed && (
+                  <span className="font-semibold text-blue-900 dark:text-blue-100 truncate">{user.name}</span>
+                )}
+              </div>
+              <button
+                onClick={logout}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-pink-500 to-orange-400 text-white font-semibold shadow hover:from-pink-600 hover:to-orange-500 transition-all duration-200"
+              >
+                <FiLogOut size={18} />
+                {!sidebarCollapsed && 'Logout'}
+              </button>
+            </div>
+          )}
         </aside>
         {/* Mobile sidebar drawer */}
         {sidebarOpen && (
@@ -124,7 +152,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
               <nav className="flex flex-col gap-2 mt-16">
-                {navLinks.map((link) => {
+                {filteredNavLinks.map((link) => {
                   const Icon = link.icon;
                   return (
                     <NavLink

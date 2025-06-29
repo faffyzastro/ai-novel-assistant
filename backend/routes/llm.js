@@ -4,6 +4,7 @@ const { getOpenAICompletion } = require('../services/openaiService');
 const { generateWithLLM } = require('../services/llmGatewayService');
 const { getClaudeCompletion } = require('../services/claudeService');
 const { getGeminiCompletion } = require('../services/geminiService');
+const llmController = require('../controllers/llmController');
 
 // POST /api/llm/openai
 router.post('/openai', async (req, res) => {
@@ -26,19 +27,8 @@ router.get('/test', (req, res) => {
 });
 
 
-// POST /api/llm/generate
-router.post('/generate', async (req, res) => {
-  const { prompt } = req.body;
-  if (!prompt) {
-    return res.status(400).json({ message: 'Prompt is required.' });
-  }
-  try {
-    const result = await generateWithLLM(prompt);
-    res.json(result);
-  } catch (error) {
-    res.status(500).json({ message: 'LLM Gateway error', error });
-  }
-});
+// POST /api/llm/generate - forwards to n8n Gemini webhook
+router.post('/generate', llmController.generateWithN8n);
 
 // POST /api/llm/claude
 router.post('/claude', async (req, res) => {
