@@ -6,6 +6,7 @@ import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
 import { useAuth } from '../context/AuthContext';
 import googleLogo from '../assets/google.svg';
+import { Link } from 'react-router-dom';
 
 const Login: React.FC = () => {
   const { login, loading, error } = useAuth();
@@ -57,7 +58,7 @@ const Login: React.FC = () => {
             </Button>
           </form>
           <div className="mt-4 text-center">
-            <a href="/recover" className="text-blue-600 dark:text-blue-300 hover:underline font-semibold">Forgot your password?</a>
+            <Link to="/recover" className="text-blue-600 dark:text-blue-300 hover:underline font-semibold">Forgot your password?</Link>
           </div>
           <div className="mt-6 text-center text-sm text-blue-900 dark:text-blue-100">
             Don&apos;t have an account? <a href="/register" className="text-blue-600 dark:text-blue-300 hover:underline font-semibold">Register</a>

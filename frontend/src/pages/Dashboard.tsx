@@ -11,19 +11,13 @@ import FileUpload from '../components/ui/FileUpload';
 import StoryGenerator from '../components/StoryGenerator';
 import Tabs from '../components/ui/Tabs';
 import { FiPlus, FiBarChart2, FiZap, FiBookOpen } from 'react-icons/fi';
-
-// Mock stories for demonstration
-const mockStories = [
-  { id: 1, title: 'The Lost City', author: 'Jane Doe', status: 'Draft', updated: '2024-06-09' },
-  { id: 2, title: 'AI Dreams', author: 'John Smith', status: 'In Progress', updated: '2024-06-08' },
-  { id: 3, title: 'Midnight Library', author: 'Jane Doe', status: 'Completed', updated: '2024-06-07' },
-];
+import { useAuth } from '../context/AuthContext';
+import { createStory, getUserStories, Story, deleteStory, createProject, getUserProjects, Project, deleteProject } from '../services/storyService';
+import UploadStoryCard from '../components/ui/UploadStoryCard';
+import { useNavigate } from 'react-router-dom';
 
 const tabLabels = [
   { label: 'All Stories', status: 'all' },
-  { label: 'Drafts', status: 'Draft' },
-  { label: 'In Progress', status: 'In Progress' },
-  { label: 'Completed', status: 'Completed' },
 ];
 
 const recentActivity = [
@@ -40,63 +34,91 @@ const promptTemplates = [
 ];
 
 const Dashboard: React.FC = () => {
-  const [selected, setSelected] = useState<typeof mockStories[0] | null>(null);
+  const { user } = useAuth();
+  const [stories, setStories] = useState<Story[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState('');
+  const [selected, setSelected] = useState<Story | null>(null);
   const [showDelete, setShowDelete] = useState(false);
   const { showToast } = useToast();
-  const [file, setFile] = useState<File | null>(null);
-  const [downloading, setDownloading] = useState<{ id: number; type: string } | null>(null);
-  const [showStoryGen, setShowStoryGen] = useState(false);
-  const [search, setSearch] = useState('');
-  const [preview, setPreview] = useState<typeof mockStories[0] | null>(null);
-  const [showWelcome, setShowWelcome] = useState(true);
+  const [preview, setPreview] = useState<Story | null>(null);
+  // For upload flow
+  const [pendingUpload, setPendingUpload] = useState<{ text: string; file: File } | null>(null);
+  const [uploadMeta, setUploadMeta] = useState({ title: '', genre: '', tone: '' });
+  const [showMetaModal, setShowMetaModal] = useState(false);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    const handler = () => setShowStoryGen(true);
-    window.addEventListener('open-story-gen', handler);
-    return () => window.removeEventListener('open-story-gen', handler);
-  }, []);
+    if (user) {
+      setLoading(true);
+      getUserStories(user.uid).then(stories => {
+        setStories(stories);
+        setLoading(false);
+      });
+    }
+  }, [user]);
 
   // Memoize filtered stories for performance
   const getFilteredStories = useMemo(() => (status: string) =>
-    mockStories.filter(story => {
+    stories.filter(story => {
       const q = search.toLowerCase();
-      const matchesTab = status === 'all' ? true : story.status === status;
-      return matchesTab && (
+      return (
         story.title.toLowerCase().includes(q) ||
-        story.author.toLowerCase().includes(q) ||
-        story.status.toLowerCase().includes(q)
+        (story.genre?.toLowerCase() ?? '').includes(q) ||
+        (story.tone?.toLowerCase() ?? '').includes(q)
       );
-    }), [search]);
-
-  // Handle file upload
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
-      showToast('File uploaded: ' + e.target.files[0].name, 'success');
-    }
-  };
-
-  // Handle file download (simulate)
-  const handleDownload = (story: typeof mockStories[0], type: 'pdf' | 'txt') => {
-    setDownloading({ id: story.id, type });
-    showToast(`Downloading ${story.title} as ${type.toUpperCase()} (simulated)`, 'info');
-    setTimeout(() => setDownloading(null), 1500);
-  };
+    }), [search, stories]);
 
   // Handle delete
-  const handleDelete = () => {
+  const handleDeleteStory = async () => {
     setShowDelete(false);
-    showToast('Story deleted (simulated)', 'success');
+    if (!user || !selected?.id) return;
+    setLoading(true);
+    await deleteStory(selected.id);
+    const updated = await getUserStories(user.uid);
+    setStories(updated);
+    setLoading(false);
+    showToast('Story deleted', 'success');
   };
 
   // DataTable columns
   const columns = [
     { label: 'Title', key: 'title' },
-    { label: 'Author', key: 'author' },
-    { label: 'Status', key: 'status' },
-    { label: 'Last Updated', key: 'updated' },
+    { label: 'Genre', key: 'genre' },
+    { label: 'Tone', key: 'tone' },
+    { label: 'Last Updated', key: 'updatedAt' },
     { label: 'Actions', key: 'actions' },
   ];
+
+  // Handle upload from UploadStoryCard
+  const handleUpload = async (text: string, file: File) => {
+    setPendingUpload({ text, file });
+    setUploadMeta({ title: file.name.replace(/\.(pdf|txt)$/i, ''), genre: '', tone: '' });
+    setShowMetaModal(true);
+  };
+
+  // Save story after user enters meta
+  const handleMetaSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !pendingUpload) return;
+    setLoading(true);
+    await createStory({
+      title: uploadMeta.title,
+      content: pendingUpload.text,
+      genre: uploadMeta.genre,
+      tone: uploadMeta.tone,
+      authorId: user.uid,
+      authorName: user.displayName || '',
+    });
+    const updated = await getUserStories(user.uid);
+    setStories(updated);
+    setLoading(false);
+    setShowMetaModal(false);
+    setPendingUpload(null);
+    setUploadMeta({ title: '', genre: '', tone: '' });
+    showToast('Story uploaded!', 'success');
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#1a2236] via-[#232946] to-[#121826] dark:from-[#181c2a] dark:via-[#232946] dark:to-[#121826]">
@@ -104,11 +126,13 @@ const Dashboard: React.FC = () => {
         {/* Sticky header */}
         <div className="sticky top-0 z-10 bg-white/80 dark:bg-[#232946]/80 backdrop-blur-md border-b border-blue-100 dark:border-blue-900 flex items-center justify-between px-4 py-2 shadow">
           <h2 className="text-2xl font-bold text-blue-700 dark:text-orange-300">Dashboard</h2>
-          <Button variant="primary" icon={<FiPlus />}>New Story</Button>
+          <Button variant="primary" icon={<span className="mr-1">+</span>} onClick={() => navigate('/new-story')}>New Story</Button>
         </div>
         <div className="flex flex-col md:flex-row gap-12 mt-4">
           {/* Left: Main content */}
           <div className="flex-1 min-w-0 space-y-8">
+            {/* Upload Story Card */}
+            <UploadStoryCard onUpload={handleUpload} />
             {/* Stats cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               <Card className="flex items-center gap-4 p-4">
@@ -154,22 +178,11 @@ const Dashboard: React.FC = () => {
                         <div className="overflow-x-auto">
                           <DataTable columns={columns} data={getFilteredStories(tab.status).map((story) => ({
                             ...story,
-                            author: <span className="flex items-center gap-2 text-blue-900 dark:text-blue-100 font-medium text-base"><Avatar size={24} />{story.author}</span>,
-                            status: <span className="font-semibold px-3 py-1 rounded-full bg-gradient-to-r from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800 text-blue-700 dark:text-blue-200 shadow-sm text-base">{story.status}</span>,
-                            updated: <span className="text-blue-500 dark:text-blue-300 font-mono text-base">{story.updated}</span>,
+                            updatedAt: <span className="text-blue-500 dark:text-blue-300 font-mono text-base">{story.updatedAt?.toDate ? story.updatedAt.toDate().toLocaleString() : ''}</span>,
                             actions: (
                               <Dropdown label={<span className="text-blue-600 dark:text-orange-300 font-semibold">Actions</span>} compact>
                                 <DropdownItem className="text-blue-700 dark:text-orange-200" compact onClick={() => setPreview(story)}>Preview</DropdownItem>
-                                <DropdownItem className="text-blue-700 dark:text-orange-200" compact onClick={() => setSelected(story)}>View</DropdownItem>
-                                <DropdownItem className="text-blue-700 dark:text-orange-200" compact onClick={() => handleDownload(story, 'pdf')}>
-                                  {downloading && downloading.id === story.id && downloading.type === 'pdf' ? <Loader size={14} className="inline-block mr-2" /> : null}
-                                  Download PDF
-                                </DropdownItem>
-                                <DropdownItem className="text-blue-700 dark:text-orange-200" compact onClick={() => handleDownload(story, 'txt')}>
-                                  {downloading && downloading.id === story.id && downloading.type === 'txt' ? <Loader size={14} className="inline-block mr-2" /> : null}
-                                  Download TXT
-                                </DropdownItem>
-                                <DropdownItem className="text-red-600 dark:text-pink-400 font-semibold" compact onClick={() => setShowDelete(true)}>Delete</DropdownItem>
+                                <DropdownItem className="text-red-600 dark:text-pink-400 font-semibold" compact onClick={() => { setSelected(story); setShowDelete(true); }}>Delete</DropdownItem>
                               </Dropdown>
                             ),
                           }))} />
@@ -205,52 +218,14 @@ const Dashboard: React.FC = () => {
         </div>
         {/* Modals */}
         <Modal
-          isOpen={!!selected}
-          onClose={() => setSelected(null)}
-          title={selected?.title}
-        >
-          <p className="mb-4 text-blue-900 dark:text-blue-100">Story details for <b>{selected?.title}</b> by {selected?.author}.</p>
-          <Button variant="primary" onClick={() => setSelected(null)}>
-            Close
-          </Button>
-        </Modal>
-        <Modal
-          isOpen={showDelete}
+          isOpen={!!selected && showDelete}
           onClose={() => setShowDelete(false)}
           title="Delete Story?"
         >
           <p className="mb-4 text-blue-900 dark:text-blue-100">Are you sure you want to delete this story? This action cannot be undone.</p>
           <div className="flex gap-2">
-            <Button variant="danger" onClick={handleDelete}>Delete</Button>
+            <Button variant="danger" onClick={handleDeleteStory}>Delete</Button>
             <Button variant="secondary" onClick={() => setShowDelete(false)}>Cancel</Button>
-          </div>
-        </Modal>
-        <Modal
-          isOpen={showStoryGen}
-          onClose={() => setShowStoryGen(false)}
-          title="Generate New Story"
-        >
-          <div className="p-2 sm:p-4 bg-gradient-to-br from-blue-50 to-orange-50 dark:from-gray-900 dark:to-blue-950 rounded-2xl">
-            {/* Prompt Templates */}
-            <div className="mb-4">
-              <h3 className="text-lg font-bold text-blue-700 dark:text-orange-400 mb-2 flex items-center gap-2">
-                <span role="img" aria-label="lightning">⚡</span> Prompt Examples
-              </h3>
-              <ul className="space-y-2">
-                {promptTemplates.map((prompt, i) => (
-                  <li key={i}>
-                    <button
-                      className="w-full text-left px-3 py-2 rounded-lg bg-blue-100/70 dark:bg-blue-900/70 hover:bg-blue-200 dark:hover:bg-blue-800 text-blue-900 dark:text-blue-100 font-medium transition-all duration-200"
-                      onClick={() => window.dispatchEvent(new CustomEvent('use-prompt-template', { detail: prompt }))}
-                      type="button"
-                    >
-                      {prompt}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <StoryGenerator />
           </div>
         </Modal>
         <Modal
@@ -259,11 +234,54 @@ const Dashboard: React.FC = () => {
           title={preview?.title ? `Preview: ${preview.title}` : 'Preview'}
         >
           <div className="p-4 sm:p-6 bg-gradient-to-br from-blue-50 to-orange-50 dark:from-blue-900 dark:to-blue-950 rounded-xl animate-fadeIn">
-            <div className="mb-2 text-sm text-blue-500 dark:text-blue-300">By {preview?.author} &middot; Status: <span className="font-semibold">{preview?.status}</span> &middot; Last updated: <span className="font-mono">{preview?.updated}</span></div>
+            <div className="mb-2 text-sm text-blue-500 dark:text-blue-300">By {preview?.authorName} &middot; Last updated: <span className="font-mono">{preview?.updatedAt?.toDate ? preview.updatedAt.toDate().toLocaleString() : ''}</span></div>
             <div className="prose prose-blue dark:prose-invert max-w-none text-base leading-relaxed text-gray-900 dark:text-gray-100 bg-white/80 dark:bg-blue-950/80 rounded-lg p-4 shadow-inner animate-fadeIn">
-              (Story preview content goes here...)
+              {preview?.content}
             </div>
           </div>
+        </Modal>
+        {/* Modal for entering story meta after upload */}
+        <Modal
+          isOpen={showMetaModal}
+          onClose={() => { setShowMetaModal(false); setPendingUpload(null); }}
+          title="Enter Story Details"
+        >
+          <form onSubmit={handleMetaSubmit} className="space-y-4">
+            <div>
+              <label className="block text-blue-700 dark:text-orange-300 font-semibold mb-1">Title</label>
+              <input
+                type="text"
+                className="w-full px-3 py-2 rounded-lg border border-blue-200 dark:border-orange-700 bg-white dark:bg-blue-950 text-gray-900 dark:text-gray-100"
+                value={uploadMeta.title}
+                onChange={e => setUploadMeta({ ...uploadMeta, title: e.target.value })}
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-blue-700 dark:text-orange-300 font-semibold mb-1">Genre</label>
+              <input
+                type="text"
+                className="w-full px-3 py-2 rounded-lg border border-blue-200 dark:border-orange-700 bg-white dark:bg-blue-950 text-gray-900 dark:text-gray-100"
+                value={uploadMeta.genre}
+                onChange={e => setUploadMeta({ ...uploadMeta, genre: e.target.value })}
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-blue-700 dark:text-orange-300 font-semibold mb-1">Tone</label>
+              <input
+                type="text"
+                className="w-full px-3 py-2 rounded-lg border border-blue-200 dark:border-orange-700 bg-white dark:bg-blue-950 text-gray-900 dark:text-gray-100"
+                value={uploadMeta.tone}
+                onChange={e => setUploadMeta({ ...uploadMeta, tone: e.target.value })}
+                required
+              />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button variant="primary" type="submit" disabled={loading}>Save Story</Button>
+              <Button variant="secondary" type="button" onClick={() => { setShowMetaModal(false); setPendingUpload(null); }}>Cancel</Button>
+            </div>
+          </form>
         </Modal>
       </div>
     </div>

@@ -25,7 +25,7 @@ const Profile: React.FC = () => {
     new: '',
     confirm: ''
   });
-  const [activeTab, setActiveTab] = useState<'personal' | 'security' | 'preferences'>('personal');
+  const [activeTab, setActiveTab] = useState<'personal' | 'security'>('personal');
   const profileCompletion = 80; // Example completion percentage
   const [loading, setLoading] = useState(false);
   const [avatarLoading, setAvatarLoading] = useState(false);
@@ -154,7 +154,6 @@ const Profile: React.FC = () => {
               <div className="flex border-b border-blue-100 dark:border-blue-900 mb-4">
                 <button onClick={() => setActiveTab('personal')} className={`px-4 py-2 font-semibold ${activeTab === 'personal' ? 'text-blue-700 dark:text-orange-300 border-b-2 border-blue-600 dark:border-orange-400' : 'text-blue-700 dark:text-orange-300'}`}>Personal Info</button>
                 <button onClick={() => setActiveTab('security')} className={`px-4 py-2 font-semibold ${activeTab === 'security' ? 'text-blue-700 dark:text-orange-300 border-b-2 border-blue-600 dark:border-orange-400' : 'text-blue-700 dark:text-orange-300'}`}>Security</button>
-                <button onClick={() => setActiveTab('preferences')} className={`px-4 py-2 font-semibold ${activeTab === 'preferences' ? 'text-blue-700 dark:text-orange-300 border-b-2 border-blue-600 dark:border-orange-400' : 'text-blue-700 dark:text-orange-300'}`}>Preferences</button>
               </div>
               {/* Tab content */}
               {activeTab === 'personal' && (
@@ -174,17 +173,6 @@ const Profile: React.FC = () => {
                   <Input label="New Password" name="new" type="password" value={password.new} onChange={handlePasswordChange} />
                   <Input label="Confirm New Password" name="confirm" type="password" value={password.confirm} onChange={handlePasswordChange} />
                   <Button variant="primary" onClick={handleUpdatePassword}>Update Password</Button>
-                </div>
-              )}
-              {activeTab === 'preferences' && (
-                <div className="space-y-4">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Theme</label>
-                  <select value={profile.theme || 'auto'} onChange={e => setProfile(prev => ({ ...prev, theme: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 dark:focus:ring-orange-400 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
-                    <option value="auto">Auto</option>
-                    <option value="light">Light</option>
-                    <option value="dark">Dark</option>
-                  </select>
-                  <Button variant="primary" onClick={() => showToast('Preferences updated!', 'success')}>Save Preferences</Button>
                 </div>
               )}
             </Card>

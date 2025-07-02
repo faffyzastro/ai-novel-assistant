@@ -13,6 +13,9 @@ import Settings from './pages/Settings';
 import AgentManager from './pages/AgentManager';
 import AnalyticsDashboard from './pages/AnalyticsDashboard';
 import Help from './pages/Help';
+import Recover from './pages/Recover';
+import VerifyEmail from './pages/VerifyEmail';
+import NewStory from './pages/NewStory';
 import './App.css';
 
 import { AuthProvider } from './context/AuthContext'; // <--- IMPORT AuthProvider here
@@ -25,6 +28,7 @@ const App: React.FC = () => {
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/new-story" element={<NewStory />} />
             <Route path="/editor" element={<StoryEditor />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
@@ -34,6 +38,8 @@ const App: React.FC = () => {
             <Route path="/agents" element={<AgentManager />} />
             <Route path="/analytics" element={<AnalyticsDashboard />} />
             <Route path="/help" element={<Help />} />
+            <Route path="/recover" element={<Recover />} />
+            <Route path="/verify-email" element={<VerifyEmail />} />
             <Route path="*" element={<Dashboard />} />
           </Routes>
         </Layout>

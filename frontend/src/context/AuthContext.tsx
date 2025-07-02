@@ -1,30 +1,40 @@
 // frontend/src/context/AuthContext.tsx
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import axios from 'axios'; // Make sure axios is installed: npm install axios
-import { useNavigate } from 'react-router-dom'; // If you want to redirect after login/logout
-import { BACKEND_URL } from '../config';
+import { useNavigate } from 'react-router-dom';
+import { auth } from '../firebase';
+import {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+  GoogleAuthProvider,
+  signInWithPopup,
+  User as FirebaseUser,
+  sendPasswordResetEmail,
+  sendEmailVerification
+} from 'firebase/auth';
 
 // Define the shape of your user data (adjust as per your backend response)
 interface User {
-  id: number;
-  name: string;
-  email: string;
-  avatar?: string; // Add avatar property
-  bio?: string;
-  // Add other user properties like 'role' if applicable
+  uid: string;
+  email: string | null;
+  displayName?: string | null;
+  photoURL?: string | null;
 }
 
 // Define the shape of the context value
 interface AuthContextType {
   user: User | null;
-  token: string | null;
   loading: boolean;
   error: string | null;
-  login: (identifier: string, password: string) => Promise<boolean>;
-  register: (name: string, email: string, password: string) => Promise<boolean>; // Added 'name' and 'email'
+  login: (email: string, password: string) => Promise<boolean>;
+  register: (email: string, password: string) => Promise<boolean>;
+  loginWithGoogle: () => Promise<boolean>;
   logout: () => void;
-  updateUser: (updates: Partial<User>) => void; // Add updateUser method
+  refreshUser: () => void;
+  resetPassword: (email: string) => Promise<boolean>;
+  resendVerificationEmail: () => Promise<boolean>;
 }
 
 // Create the context
@@ -33,109 +43,159 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 // Define the AuthProvider component
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const navigate = useNavigate(); // Initialize useNavigate for potential redirects
+  const navigate = useNavigate();
 
-  // --- Registration Function ---
-  const register = async (name: string, email: string, password: string): Promise<boolean> => {
-    setLoading(true);
-    setError(null); // Clear any previous errors
+  // Convert Firebase user to our User type
+  const mapUser = (fbUser: FirebaseUser): User => ({
+    uid: fbUser.uid,
+    email: fbUser.email,
+    displayName: fbUser.displayName,
+    photoURL: fbUser.photoURL,
+  });
 
-    try {
-      // Make a POST request to your backend's user creation endpoint
-      // This maps to your backend's router.post('/', createUser);
-      const response = await axios.post(`${BACKEND_URL}/api/users`, {
-        name,
-        email,
-        password,
-      });
-
-      console.log('Registration successful:', response.data);
-      setLoading(false);
-      return true; // Indicate success
-    } catch (err: any) {
-      console.error('Registration error:', err.response?.data || err.message);
-      // Set error message from backend or a generic one
-      setError(err.response?.data?.error || err.response?.data?.message || 'Registration failed. Please try again.');
-      setLoading(false);
-      return false; // Indicate failure
-    }
-  };
-
-  // --- Login Function ---
-  // This function will be called by your Login component
-  const login = async (identifier: string, password: string): Promise<boolean> => {
-    setLoading(true);
-    setError(null); // Clear any previous errors
-
-    try {
-      // Make a POST request to your backend's login endpoint
-      // You NEED to implement this endpoint in your backend (e.g., POST /api/login)
-      const response = await axios.post(`${BACKEND_URL}/api/login`, {
-        identifier,
-        password,
-      });
-
-      const { user: userData, token: userToken } = response.data; // Assuming your backend sends 'user' and 'token'
-
-      setUser(userData);
-      setToken(userToken);
-
-      // Store user data and token in localStorage for persistence across page refreshes
-      localStorage.setItem('user', JSON.stringify(userData));
-      localStorage.setItem('token', userToken);
-
-      setLoading(false);
-      navigate('/dashboard'); // Redirect to dashboard on successful login
-      return true; // Indicate success
-    } catch (err: any) {
-      console.error('Login error:', err.response?.data || err.message);
-      // Set error message from backend or a generic one
-      setError(err.response?.data?.message || 'Invalid credentials. Please try again.');
-      setLoading(false);
-      return false; // Indicate failure
-    }
-  };
-
-  // --- Logout Function ---
-  const logout = () => {
-    setUser(null);
-    setToken(null);
-    localStorage.removeItem('user');
-    localStorage.removeItem('token');
-    navigate('/login'); // Redirect to login page on logout
-  };
-
-  // --- Load user/token from localStorage on initial render ---
+  // Listen for auth state changes
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    const storedToken = localStorage.getItem('token');
-    if (storedUser && storedToken) {
-      try {
-        setUser(JSON.parse(storedUser));
-        setToken(storedToken);
-      } catch (e) {
-        console.error("Failed to parse stored user data:", e);
-        logout(); // Clear invalid data
+    const unsubscribe = onAuthStateChanged(auth, (fbUser) => {
+      if (fbUser) {
+        setUser(mapUser(fbUser));
+      } else {
+        setUser(null);
       }
-    }
+    });
+    return () => unsubscribe();
   }, []);
 
-  // --- Update User Function ---
-  const updateUser = (updates: Partial<User>) => {
-    setUser(prev => {
-      if (!prev) return prev;
-      const updated = { ...prev, ...updates };
-      localStorage.setItem('user', JSON.stringify(updated));
-      return updated;
-    });
+  function getFriendlyAuthError(error: any, context: 'login' | 'register'): string {
+    switch (error.code) {
+      case 'auth/email-already-in-use':
+        return context === 'register'
+          ? 'An account with this email already exists. Please log in or use a different email.'
+          : 'An account with this email already exists.';
+      case 'auth/invalid-email':
+        return 'Please enter a valid email address.';
+      case 'auth/user-not-found':
+      case 'auth/wrong-password':
+        return context === 'login'
+          ? 'Incorrect email or password. Please try again.'
+          : 'No account found with this email.';
+      case 'auth/weak-password':
+        return 'Password should be at least 6 characters.';
+      case 'auth/popup-closed-by-user':
+        return 'The sign-in popup was closed before completing.';
+      default:
+        return error.message || 'An unknown error occurred. Please try again.';
+    }
+  }
+
+  const login = async (email: string, password: string): Promise<boolean> => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await signInWithEmailAndPassword(auth, email, password);
+      setUser(mapUser(result.user));
+      setLoading(false);
+      navigate('/dashboard');
+      return true;
+    } catch (err: any) {
+      setError(getFriendlyAuthError(err, 'login'));
+      setLoading(false);
+      return false;
+    }
+  };
+
+  const register = async (email: string, password: string): Promise<boolean> => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await createUserWithEmailAndPassword(auth, email, password);
+      setUser(mapUser(result.user));
+      await sendEmailVerification(result.user);
+      setLoading(false);
+      navigate('/verify-email');
+      return true;
+    } catch (err: any) {
+      setError(getFriendlyAuthError(err, 'register'));
+      setLoading(false);
+      return false;
+    }
+  };
+
+  const loginWithGoogle = async (): Promise<boolean> => {
+    setLoading(true);
+    setError(null);
+    try {
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      setUser(mapUser(result.user));
+      setLoading(false);
+      navigate('/dashboard');
+      return true;
+    } catch (err: any) {
+      setError(getFriendlyAuthError(err, 'login'));
+      setLoading(false);
+      return false;
+    }
+  };
+
+  const logout = () => {
+    signOut(auth);
+    setUser(null);
+    navigate('/login');
+  };
+
+  // Add a method to refresh the user from Firebase
+  const refreshUser = () => {
+    if (auth.currentUser) {
+      setUser({
+        uid: auth.currentUser.uid,
+        email: auth.currentUser.email,
+        displayName: auth.currentUser.displayName,
+        photoURL: auth.currentUser.photoURL,
+      });
+    }
+  };
+
+  // Add a method to send a password reset email
+  const resetPassword = async (email: string): Promise<boolean> => {
+    setLoading(true);
+    setError(null);
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setLoading(false);
+      return true;
+    } catch (err: any) {
+      setError(err.message || 'Failed to send password reset email.');
+      setLoading(false);
+      return false;
+    }
+  };
+
+  // Add a method to send a verification email
+  const resendVerificationEmail = async (): Promise<boolean> => {
+    setLoading(true);
+    setError(null);
+    try {
+      if (auth.currentUser) {
+        await sendEmailVerification(auth.currentUser);
+        setLoading(false);
+        return true;
+      } else {
+        setError('No user is currently logged in.');
+        setLoading(false);
+        return false;
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to send verification email.');
+      setLoading(false);
+      return false;
+    }
   };
 
   // Provide the context values to children components
   return (
-    <AuthContext.Provider value={{ user, token, loading, error, login, register, logout, updateUser }}>
+    <AuthContext.Provider value={{ user, loading, error, login, register, loginWithGoogle, logout, refreshUser, resetPassword, resendVerificationEmail }}>
       {children}
     </AuthContext.Provider>
   );

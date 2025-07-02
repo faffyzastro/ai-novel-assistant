@@ -1,11 +1,6 @@
 const { Sequelize } = require('sequelize');
+const sequelize = require('../config/database');
 const path = require('path');
-
-const sequelize = new Sequelize({
-  dialect: 'sqlite',
-  storage: path.join(__dirname, '../../database/ai-novel.sqlite'),
-  logging: false,
-});
 
 // Import models
 const User = require('./user')(sequelize);

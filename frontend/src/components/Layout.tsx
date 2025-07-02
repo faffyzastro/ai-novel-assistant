@@ -77,7 +77,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               aria-label="Profile"
               style={{ padding: 0 }}
             >
-              <Avatar src={user.avatar} name={user.name} size={32} />
+              <Avatar src={user.photoURL} name={user.displayName} size={32} />
             </NavLink>
           )}
           {!user && (
@@ -96,8 +96,8 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           {/* User info at top */}
           {user && (
             <div className={`flex flex-col items-center py-6 transition-all duration-300 ${sidebarCollapsed ? 'py-2' : ''}`}>
-              <Avatar src={user.avatar} name={user.name} size={sidebarCollapsed ? 32 : 48} />
-              {!sidebarCollapsed && <span className="mt-2 text-sm font-semibold text-blue-900 dark:text-blue-100">{user.name}</span>}
+              <Avatar src={user.photoURL} name={user.displayName} size={sidebarCollapsed ? 32 : 48} />
+              {!sidebarCollapsed && <span className="mt-2 text-sm font-semibold text-blue-900 dark:text-blue-100">{user.displayName}</span>}
             </div>
           )}
           <button
@@ -211,7 +211,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           <span className="text-xs">Editor</span>
         </NavLink>
         <NavLink to="/profile" className={({ isActive }) => `flex flex-col items-center justify-center flex-1 h-full ${isActive ? 'text-blue-600 dark:text-orange-400' : 'text-blue-900 dark:text-blue-100'}` }>
-          {user ? <Avatar src={user.avatar} name={user.name} size={24} /> : <FiUser size={24} />}
+          {user ? <Avatar src={user.photoURL} name={user.displayName} size={24} /> : <FiUser size={24} />}
           <span className="text-xs">Profile</span>
         </NavLink>
         <NavLink to="/settings" className={({ isActive }) => `flex flex-col items-center justify-center flex-1 h-full ${isActive ? 'text-blue-600 dark:text-orange-400' : 'text-blue-900 dark:text-blue-100'}` }>

@@ -10,7 +10,7 @@ import googleLogo from '../assets/google.svg';
 
 const Register: React.FC = () => {
   // Destructure the 'register' function, 'loading' state, and 'error' state from useAuth
-  const { register, loading, error: authError } = useAuth();
+  const { register, loading, error: authError, loginWithGoogle } = useAuth();
   const navigate = useNavigate(); // Initialize navigate hook
 
   // Initialize form state with 'name', 'email', 'password', and 'confirm'
@@ -34,9 +34,17 @@ const Register: React.FC = () => {
     }
 
     // Call the actual register function from AuthContext
-    const isSuccess = await register(form.name, form.email, form.password);
+    const isSuccess = await register(form.email, form.password);
 
     if (isSuccess) {
+      // Set display name after registration
+      if (typeof window !== 'undefined') {
+        const { auth } = await import('../firebase');
+        const { updateProfile } = await import('firebase/auth');
+        if (auth.currentUser) {
+          await updateProfile(auth.currentUser, { displayName: form.name });
+        }
+      }
       setSuccess(true);
       // Optional: Redirect to login page after a short delay for user to read success message
       setTimeout(() => {
@@ -53,7 +61,7 @@ const Register: React.FC = () => {
       <div className="w-full max-w-lg mx-auto p-4 md:p-8 flex flex-col items-center justify-center">
         <Card className="w-full p-6 md:p-8 bg-white/80 dark:bg-blue-950/80 backdrop-blur-md border border-blue-200 dark:border-blue-900 shadow-2xl">
           <h2 className="text-3xl font-heading font-bold mb-6 text-center text-[#232946] dark:text-white tracking-tight">Register</h2>
-          <Button type="button" variant="secondary" className="w-full mb-4 flex items-center justify-center gap-2">
+          <Button type="button" variant="secondary" className="w-full mb-4 flex items-center justify-center gap-2" onClick={loginWithGoogle} disabled={loading}>
             <img src={googleLogo} alt="Google logo" className="w-5 h-5" />
             Register with Google
           </Button>
