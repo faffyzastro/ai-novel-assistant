@@ -9,16 +9,23 @@ const jwt = require('jsonwebtoken'); // For generating JSON Web Tokens
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key_here'; // Replace with a strong, secret key
 
 exports.loginUser = async (req, res) => {
-    const { email, password } = req.body;
+    const { identifier, password } = req.body;
 
     // Basic validation
-    if (!email || !password) {
-        return res.status(400).json({ message: 'Please enter both email and password.' });
+    if (!identifier || !password) {
+        return res.status(400).json({ message: 'Please enter your username/email and password.' });
     }
 
     try {
-        // 1. Find the user by email
-        const user = await User.findOne({ where: { email } });
+        // 1. Find the user by email or username (name)
+        const user = await User.findOne({
+            where: {
+                [require('sequelize').Op.or]: [
+                    { email: identifier },
+                    { name: identifier }
+                ]
+            }
+        });
 
         if (!user) {
             return res.status(401).json({ message: 'Invalid credentials.' }); // Generic message for security

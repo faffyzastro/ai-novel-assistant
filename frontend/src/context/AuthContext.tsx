@@ -21,7 +21,7 @@ interface AuthContextType {
   token: string | null;
   loading: boolean;
   error: string | null;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (identifier: string, password: string) => Promise<boolean>;
   register: (name: string, email: string, password: string) => Promise<boolean>; // Added 'name' and 'email'
   logout: () => void;
   updateUser: (updates: Partial<User>) => void; // Add updateUser method
@@ -66,7 +66,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // --- Login Function ---
   // This function will be called by your Login component
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (identifier: string, password: string): Promise<boolean> => {
     setLoading(true);
     setError(null); // Clear any previous errors
 
@@ -74,7 +74,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Make a POST request to your backend's login endpoint
       // You NEED to implement this endpoint in your backend (e.g., POST /api/login)
       const response = await axios.post(`${BACKEND_URL}/api/login`, {
-        email,
+        identifier,
         password,
       });
 
