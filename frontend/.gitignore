@@ -1,15 +1,7 @@
-<<<<<<< HEAD
-node_modules/
-.env
-*.sqlite
-.DS_Store
-Thumbs.db
-=======
-# Node modules should never be committed
 node_modules/
 
 # Build output
-/dist/
+dist/
 
 # Environment variables
 .env
@@ -31,4 +23,3 @@ yarn-error.log*
 *.njsproj
 *.sln
 *.sw?
->>>>>>> 56e719e (initial front end commit with the frontend structure plus wireframes)

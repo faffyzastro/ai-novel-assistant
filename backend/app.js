@@ -34,27 +34,4 @@ app.use('/api/llm', llmRoutes);
 // We're mounting it under '/api' so your login endpoint becomes '/api/login'.
 app.use('/api', authRoutes);
 
-// --- Server Start and Database Connection ---
-const PORT = process.env.PORT || 8000;
-
-// Listen for incoming requests
-app.listen(PORT, async () => {
-  try {
-    // Test the database connection
-    await sequelize.authenticate();
-    console.log('✅ Database connected.');
-
-    // Sync Sequelize models with the database.
-    // `force: false` means it won't drop tables if they already exist.
-    // Use `force: true` ONLY for development if you want to clear your DB and recreate tables on every restart.
-    await sequelize.sync({ force: false });
-    console.log('✅ Tables synced.');
-
-    console.log(`🚀 Server running at http://localhost:${PORT}`);
-  } catch (err) {
-    // Log any errors that occur during database connection or server startup
-    console.error('❌ Startup error:', err.message);
-    // Optionally exit the process if the database connection fails
-    process.exit(1);
-  }
-});
+module.exports = app;
